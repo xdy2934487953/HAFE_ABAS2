@@ -145,10 +145,55 @@ class ABSADataset(Dataset):
                     key = aspect['term'].lower()
                 freq[key] = freq.get(key, 0) + 1
         return freq
-    
+
+    def compute_frequency_buckets(self, num_buckets=5):
+        """
+        为每个样本的aspect分配频率分桶
+
+        Args:
+            num_buckets: 分桶数量 (默认5: 0-20%, 20-40%, 40-60%, 60-80%, 80-100%)
+
+        Returns:
+            frequency_buckets: dict mapping aspect_key -> bucket_id (0 到 num_buckets-1)
+        """
+        # 获取所有频率值
+        freq_values = list(self.aspect_freq.values())
+
+        if len(freq_values) == 0:
+            return {}
+
+        # 计算百分位数作为分桶边界
+        percentiles = np.linspace(0, 100, num_buckets + 1)
+        boundaries = np.percentile(freq_values, percentiles)
+
+        # 为每个aspect分配桶
+        frequency_buckets = {}
+        for aspect_key, freq in self.aspect_freq.items():
+            # 使用digitize分配到桶
+            bucket_id = np.digitize(freq, boundaries[1:-1])
+            bucket_id = np.clip(bucket_id, 0, num_buckets - 1)
+            frequency_buckets[aspect_key] = int(bucket_id)
+
+        return frequency_buckets
+
+    def get_aspect_key(self, aspect):
+        """
+        获取aspect的key (用于查找频率)
+
+        Args:
+            aspect: aspect字典
+
+        Returns:
+            key: aspect的标识符
+        """
+        if 'category' in aspect and self.dataset_name == 'semeval2016':
+            return aspect['category']
+        else:
+            return aspect['term'].lower()
+
     def __len__(self):
         return len(self.samples)
-    
+
     def __getitem__(self, idx):
         return self.samples[idx]
 
