@@ -42,17 +42,26 @@ class ABSAGraphBuilder:
     
     def __init__(self, device='cuda'):
         self.device = device
-        
+
+        # 设置Stanza资源目录到当前用户目录（解决Windows权限问题）
+        import os
+        self.stanza_dir = os.path.join(os.path.expanduser('~'), 'stanza_resources')
+        os.makedirs(self.stanza_dir, exist_ok=True)
+
         # 初始化依存解析器
         print("初始化Stanza依存解析器...")
+        print(f"Stanza资源目录: {self.stanza_dir}")
         try:
-            self.nlp = stanza.Pipeline('en', processors='tokenize,pos,lemma,depparse', 
-                                      use_gpu=(device=='cuda'), verbose=False)
+            self.nlp = stanza.Pipeline('en', processors='tokenize,pos,lemma,depparse',
+                                      use_gpu=(device=='cuda'), verbose=False,
+                                      dir=self.stanza_dir)
         except:
             print("下载Stanza英文模型...")
-            stanza.download('en')
-            self.nlp = stanza.Pipeline('en', processors='tokenize,pos,lemma,depparse', 
-                                      use_gpu=(device=='cuda'), verbose=False)
+            stanza.download('en', model_dir=self.stanza_dir, verbose=True)
+            print("模型下载完成！")
+            self.nlp = stanza.Pipeline('en', processors='tokenize,pos,lemma,depparse',
+                                      use_gpu=(device=='cuda'), verbose=False,
+                                      dir=self.stanza_dir)
         
         # 初始化BERT
         print("初始化BERT...")
