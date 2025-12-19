@@ -60,6 +60,9 @@ def train_epoch_causal(model, graphs, frequency_buckets, dataset, optimizer, dev
             # 检查nan
             if torch.isnan(logits).any():
                 print(f"警告: logits包含nan，跳过该batch")
+                print(f"  features范围: [{features.min().item():.4f}, {features.max().item():.4f}]")
+                print(f"  labels: {labels.tolist()}")
+                print(f"  frequency_labels: {frequency_labels.tolist()}")
                 continue
 
             # 计算总损失
@@ -68,14 +71,25 @@ def train_epoch_causal(model, graphs, frequency_buckets, dataset, optimizer, dev
             # 检查nan
             if torch.isnan(loss):
                 print(f"警告: loss为nan，跳过该batch")
-                print(f"  logits范围: [{logits.min().item():.4f}, {logits.max().item()}]")
+                print(f"  logits范围: [{logits.min().item():.4f}, {logits.max().item():.4f}]")
                 print(f"  DIB losses: {dib_losses}")
+                print(f"  loss_dict: {loss_dict}")
+                continue
+
+            # 检查梯度爆炸前的值
+            if torch.isinf(loss):
+                print(f"警告: loss为inf，跳过该batch")
+                print(f"  loss_dict: {loss_dict}")
                 continue
 
             loss.backward()
 
-            # 梯度裁剪（防止梯度爆炸）
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            # 检查梯度
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            if torch.isnan(grad_norm) or torch.isinf(grad_norm):
+                print(f"警告: 梯度包含nan/inf (norm={grad_norm}), 跳过该batch")
+                optimizer.zero_grad()
+                continue
 
             optimizer.step()
 

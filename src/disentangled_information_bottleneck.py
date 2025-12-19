@@ -53,6 +53,17 @@ class DisentangledEncoder(nn.Module):
             nn.Linear(input_dim, spurious_dim)
         )
 
+        # 权重初始化 (Xavier初始化提高稳定性)
+        self._init_weights()
+
+    def _init_weights(self):
+        """初始化权重"""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight, gain=0.5)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
     def forward(self, x):
         """
         Args:
@@ -86,6 +97,17 @@ class MutualInformationEstimator(nn.Module):
             nn.Linear(hidden_dim, 1)
         )
 
+        # 权重初始化
+        self._init_weights()
+
+    def _init_weights(self):
+        """初始化权重"""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight, gain=0.5)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
     def forward(self, z_c, z_s):
         """
         估计互信息 I(Z_c; Z_s)
@@ -111,8 +133,12 @@ class MutualInformationEstimator(nn.Module):
         marginal = torch.cat([z_c, z_s_shuffled], dim=1)
         t_marginal = self.statistics_network(marginal)
 
-        # MINE下界
-        mi_lower_bound = t_joint.mean() - torch.log(torch.exp(t_marginal).mean() + 1e-8)
+        # MINE下界 (使用log-sum-exp技巧提高数值稳定性)
+        # 原版: log(E[exp(t)]) = log(mean(exp(t)))
+        # 稳定版: log(mean(exp(t - t_max))) + t_max
+        t_max = t_marginal.max().detach()
+        exp_term = torch.exp(t_marginal - t_max).mean()
+        mi_lower_bound = t_joint.mean() - (torch.log(exp_term + 1e-8) + t_max)
 
         return mi_lower_bound
 
@@ -139,6 +165,17 @@ class FrequencyDiscriminator(nn.Module):
             nn.Dropout(0.3),
             nn.Linear(hidden_dim, num_frequency_buckets)
         )
+
+        # 权重初始化
+        self._init_weights()
+
+    def _init_weights(self):
+        """初始化权重"""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight, gain=0.5)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, z_s):
         """
@@ -169,6 +206,17 @@ class InformationBottleneckRegularizer(nn.Module):
             nn.Linear(hidden_dim, 1)
         )
 
+        # 权重初始化
+        self._init_weights()
+
+    def _init_weights(self):
+        """初始化权重"""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight, gain=0.5)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
     def forward(self, z_c, x):
         """
         估计 I(Z_c; X)
@@ -191,8 +239,10 @@ class InformationBottleneckRegularizer(nn.Module):
         marginal = torch.cat([z_c, x_shuffled], dim=1)
         t_marginal = self.statistics_network(marginal)
 
-        # 互信息下界
-        ib_estimate = t_joint.mean() - torch.log(torch.exp(t_marginal).mean() + 1e-8)
+        # 互信息下界 (使用log-sum-exp技巧)
+        t_max = t_marginal.max().detach()
+        exp_term = torch.exp(t_marginal - t_max).mean()
+        ib_estimate = t_joint.mean() - (torch.log(exp_term + 1e-8) + t_max)
 
         return ib_estimate
 
