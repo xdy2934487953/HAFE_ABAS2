@@ -2,7 +2,7 @@
 stanza_resources/
 
 # 忽略 Python 的缓存文件夹 (建议加上)
-src/__pycache__/
+__pycache__/
 
 
 # 忽略 VS Code 的本地配置文件夹 (通常也不上传)
