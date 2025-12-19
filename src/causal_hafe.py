@@ -234,23 +234,23 @@ class CausalHAFE_Model(nn.Module):
 
         with torch.no_grad():
             for graph in all_graphs:
-                features = graph['features'].to(self.device)
+                features = graph['features'].to(self.device)  # 确保在正确设备上
 
                 # 先通过F3增强
                 if self.f3_preprocessed:
                     features = self.f3_module.enhance_features(features)
 
                 # 再通过DIB编码得到因果表示
-                z_c_all, _ = self.dib_module(features)
+                z_c_all, _ = self.dib_module(features)  # 现在features已经在CUDA上
 
-                all_causal_features.append(z_c_all.cpu())
+                all_causal_features.append(z_c_all.cpu())  # 收集时转到CPU节省显存
 
         # 合并所有因果特征
         combined_features = torch.cat(all_causal_features, dim=0)
 
         print(f"收集到 {combined_features.shape[0]} 个节点的因果特征")
 
-        # 对每一层GAT初始化混淆因子
+        # 对每一层GAT初始化混淆因子（转回CUDA）
         self.gat1.initialize_confounders(combined_features.to(self.device))
         self.gat2.initialize_confounders(combined_features.to(self.device))
 
