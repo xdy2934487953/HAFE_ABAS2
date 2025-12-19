@@ -70,13 +70,20 @@ class ABSAGraphBuilder:
                 use_gpu=(device=='cuda'),
                 verbose=False,
                 dir=self.stanza_dir,
-                download_method=None  # 禁止自动下载
+                download_method=None,  # 禁止自动下载
+                # 指定使用nocharlm版本（手动下载版本）
+                tokenize_pretokenized=False,
+                pos_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt'),
+                lemma_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt'),
+                depparse_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')
             )
             print("✅ Stanza加载成功!")
         except Exception as e:
             print(f"❌ Stanza加载失败: {e}")
-            print("\n请尝试重新下载模型:")
-            print("  python download_stanza_local.py")
+            print("\n请检查模型文件是否下载完整:")
+            print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt')}")
+            print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt')}")
+            print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')}")
             raise
         
         # 初始化BERT
