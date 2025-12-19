@@ -57,10 +57,26 @@ def train_epoch_causal(model, graphs, frequency_buckets, dataset, optimizer, dev
                 frequency_labels, return_dib_losses=True
             )
 
+            # 检查nan
+            if torch.isnan(logits).any():
+                print(f"警告: logits包含nan，跳过该batch")
+                continue
+
             # 计算总损失
             loss, loss_dict = model.compute_total_loss(logits, labels, dib_losses)
 
+            # 检查nan
+            if torch.isnan(loss):
+                print(f"警告: loss为nan，跳过该batch")
+                print(f"  logits范围: [{logits.min().item():.4f}, {logits.max().item()}]")
+                print(f"  DIB losses: {dib_losses}")
+                continue
+
             loss.backward()
+
+            # 梯度裁剪（防止梯度爆炸）
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
             optimizer.step()
 
             total_loss += loss.item()
@@ -75,9 +91,13 @@ def train_epoch_causal(model, graphs, frequency_buckets, dataset, optimizer, dev
             continue
 
     # 平均损失
-    avg_loss = total_loss / max(num_samples, 1)
+    if num_samples == 0:
+        print("警告: 没有成功训练任何样本！")
+        return float('nan'), loss_breakdown
+
+    avg_loss = total_loss / num_samples
     for key in loss_breakdown.keys():
-        loss_breakdown[key] /= max(num_samples, 1)
+        loss_breakdown[key] /= num_samples
 
     return avg_loss, loss_breakdown
 
@@ -237,6 +257,12 @@ def main(args):
 
     # 5. 训练设置
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+    # 添加学习率调度器（防止训练不稳定）
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='max', factor=0.5, patience=5, verbose=True
+    )
+
     evaluator = ABSAEvaluator()
 
     best_macro_f1 = 0
@@ -284,6 +310,9 @@ def main(args):
                 os.makedirs('./checkpoints', exist_ok=True)
                 save_name = f"{args.dataset}_{args.model}"
                 torch.save(model.state_dict(), f'./checkpoints/{save_name}_best.pt')
+
+            # 更新学习率
+            scheduler.step(test_metrics['macro_f1'])
 
     # 7. 最终评估 (使用TIE)
     if args.model == 'causal_hafe' and args.use_tie_inference:
@@ -382,8 +411,8 @@ if __name__ == '__main__':
                        help='频率分桶数量')
 
     # 训练参数
-    parser.add_argument('--lr', type=float, default=0.001,
-                       help='学习率')
+    parser.add_argument('--lr', type=float, default=0.0001,
+                       help='学习率（降低以提高稳定性）')
     parser.add_argument('--weight_decay', type=float, default=1e-5,
                        help='权重衰减')
     parser.add_argument('--epochs', type=int, default=50,

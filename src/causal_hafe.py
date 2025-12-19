@@ -229,19 +229,30 @@ class CausalHAFE_Model(nn.Module):
 
         print("\n初始化Causal-HAFE混淆因子原型...")
 
-        # 收集所有节点特征
-        all_features = []
-        for graph in all_graphs:
-            all_features.append(graph['features'])
+        # 收集所有节点特征（DIB编码后的因果表示）
+        all_causal_features = []
 
-        combined_features = torch.cat(all_features, dim=0).to(self.device)
+        with torch.no_grad():
+            for graph in all_graphs:
+                features = graph['features'].to(self.device)
+
+                # 先通过F3增强
+                if self.f3_preprocessed:
+                    features = self.f3_module.enhance_features(features)
+
+                # 再通过DIB编码得到因果表示
+                z_c_all, _ = self.dib_module(features)
+
+                all_causal_features.append(z_c_all.cpu())
+
+        # 合并所有因果特征
+        combined_features = torch.cat(all_causal_features, dim=0)
+
+        print(f"收集到 {combined_features.shape[0]} 个节点的因果特征")
 
         # 对每一层GAT初始化混淆因子
-        # 注意: 使用原始特征维度初始化
-        self.gat1.initialize_confounders(combined_features)
-
-        # 对第二层,使用第一层输出的维度 (这里简化为使用相同的聚类)
-        # 在实际训练中会自动调整
+        self.gat1.initialize_confounders(combined_features.to(self.device))
+        self.gat2.initialize_confounders(combined_features.to(self.device))
 
         self.confounders_initialized = True
         print("混淆因子原型初始化完成!\n")
