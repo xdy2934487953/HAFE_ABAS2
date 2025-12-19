@@ -71,8 +71,12 @@ class ABSAGraphBuilder:
                 verbose=False,
                 dir=self.stanza_dir,
                 download_method=None,  # 禁止自动下载
+                # 禁用pretrain（我们用BERT，不需要Stanza的词嵌入）
+                tokenize_no_ssplit=False,
+                pos_pretrain_path=None,  # 不使用预训练词嵌入
+                lemma_use_identity=False,
+                depparse_pretrain_path=None,  # 不使用预训练词嵌入
                 # 指定使用nocharlm版本（手动下载版本）
-                tokenize_pretokenized=False,
                 pos_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt'),
                 lemma_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt'),
                 depparse_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')
@@ -84,6 +88,7 @@ class ABSAGraphBuilder:
             print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt')}")
             print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt')}")
             print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')}")
+            print("\n如果仍然报错，请提供完整错误信息")
             raise
         
         # 初始化BERT
