@@ -24,3 +24,6 @@ python train.py --dataset semeval2016 --model hafe --epochs 50 | tee results/sem
 echo -e "\n=========================================="
 echo "所有实验完成！结果保存在 results/ 目录"
 echo "=========================================="
+
+
+python train_causal.py --dataset semeval2014 --model causal_hafe --epochs 10 --eval_every 2
