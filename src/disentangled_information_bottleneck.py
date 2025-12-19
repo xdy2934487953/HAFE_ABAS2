@@ -120,7 +120,7 @@ class MutualInformationEstimator(nn.Module):
             z_s: [batch_size, spurious_dim]
 
         Returns:
-            mi_estimate: 标量互信息估计
+            mi_estimate: 标量互信息估计 (用于最小化互信息)
         """
         batch_size = z_c.size(0)
 
@@ -134,13 +134,17 @@ class MutualInformationEstimator(nn.Module):
         t_marginal = self.statistics_network(marginal)
 
         # MINE下界 (使用log-sum-exp技巧提高数值稳定性)
-        # 原版: log(E[exp(t)]) = log(mean(exp(t)))
-        # 稳定版: log(mean(exp(t - t_max))) + t_max
+        # I(X;Y) ≈ E[T(x,y)] - log(E[exp(T(x,y'))])
         t_max = t_marginal.max().detach()
         exp_term = torch.exp(t_marginal - t_max).mean()
         mi_lower_bound = t_joint.mean() - (torch.log(exp_term + 1e-8) + t_max)
 
-        return mi_lower_bound
+        # 修复：对于解耦约束，我们希望最小化I(Z_c; Z_s)
+        # 但MINE的下界可能为负（当无相关性时）或正（当有相关性时）
+        # 我们应该始终返回正值用于最小化：max(0, mi_lower_bound) 或使用exp
+        mi_estimate = torch.exp(mi_lower_bound)  # 转换为正值范围[0, inf)
+
+        return mi_estimate
 
 
 class FrequencyDiscriminator(nn.Module):
@@ -242,7 +246,11 @@ class InformationBottleneckRegularizer(nn.Module):
         # 互信息下界 (使用log-sum-exp技巧)
         t_max = t_marginal.max().detach()
         exp_term = torch.exp(t_marginal - t_max).mean()
-        ib_estimate = t_joint.mean() - (torch.log(exp_term + 1e-8) + t_max)
+        ib_lower_bound = t_joint.mean() - (torch.log(exp_term + 1e-8) + t_max)
+
+        # 修复：对于信息瓶颈，我们希望最小化I(Z_c; X)
+        # 转换为正值用于最小化
+        ib_estimate = torch.exp(ib_lower_bound)
 
         return ib_estimate
 

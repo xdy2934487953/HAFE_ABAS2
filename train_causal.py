@@ -84,8 +84,8 @@ def train_epoch_causal(model, graphs, frequency_buckets, dataset, optimizer, dev
 
             loss.backward()
 
-            # 检查梯度
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            # 更强的梯度剪切以防止梯度爆炸
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
             if torch.isnan(grad_norm) or torch.isinf(grad_norm):
                 print(f"警告: 梯度包含nan/inf (norm={grad_norm}), 跳过该batch")
                 optimizer.zero_grad()
@@ -416,12 +416,12 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.3,
                        help='Dropout比例')
 
-    # DIB损失权重
-    parser.add_argument('--lambda_indep', type=float, default=0.1,
+    # DIB损失权重 (降低以防止梯度爆炸)
+    parser.add_argument('--lambda_indep', type=float, default=0.01,
                        help='解耦约束权重')
-    parser.add_argument('--lambda_bias', type=float, default=0.5,
+    parser.add_argument('--lambda_bias', type=float, default=0.1,
                        help='偏差拟合权重')
-    parser.add_argument('--lambda_ib', type=float, default=0.01,
+    parser.add_argument('--lambda_ib', type=float, default=0.001,
                        help='信息瓶颈权重')
 
     # 频率分桶

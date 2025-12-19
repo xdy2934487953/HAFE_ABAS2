@@ -43,8 +43,8 @@ class CausalHAFE_Model(nn.Module):
                  causal_dim=128, spurious_dim=64, num_frequency_buckets=5,
                  # Deconfounded GAT参数
                  num_confounders=5, num_edge_types=4, gat_heads=1,
-                 # 损失权重
-                 lambda_indep=0.1, lambda_bias=0.5, lambda_ib=0.01,
+                 # 损失权重 (降低以防止梯度爆炸)
+                 lambda_indep=0.01, lambda_bias=0.1, lambda_ib=0.001,
                  dropout=0.3):
         """
         Args:
