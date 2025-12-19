@@ -234,6 +234,9 @@ def main(args):
         print(f"  混淆因子数: {args.num_confounders}")
         print(f"  GAT头数: {args.gat_heads}")
 
+        # 将模型移到设备（必须在预处理前）
+        model = model.to(device)
+
         # F3预处理
         print("\nF3预处理...")
         model.preprocess_f3(train_graphs)
@@ -253,7 +256,8 @@ def main(args):
         model_name = "Causal-HAFE Baseline (无因果模块)"
         print(f"模型: {model_name}")
 
-    model = model.to(device)
+        # 将模型移到设备
+        model = model.to(device)
 
     # 5. 训练设置
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
