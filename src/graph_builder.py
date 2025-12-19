@@ -64,6 +64,9 @@ class ABSAGraphBuilder:
             raise FileNotFoundError("Stanza模型未下载，请先运行 download_stanza_local.py")
 
         try:
+            # 指定pretrain路径（使用glove词向量）
+            pretrain_path = os.path.join(self.stanza_dir, 'en', 'pretrain', 'glove.pt')
+
             self.nlp = stanza.Pipeline(
                 'en',
                 processors='tokenize,pos,lemma,depparse',
@@ -71,12 +74,9 @@ class ABSAGraphBuilder:
                 verbose=False,
                 dir=self.stanza_dir,
                 download_method=None,  # 禁止自动下载
-                # 禁用pretrain（我们用BERT，不需要Stanza的词嵌入）
-                tokenize_no_ssplit=False,
-                pos_pretrain_path=None,  # 不使用预训练词嵌入
-                lemma_use_identity=False,
-                depparse_pretrain_path=None,  # 不使用预训练词嵌入
-                # 指定使用nocharlm版本（手动下载版本）
+                # 指定pretrain路径和模型路径
+                pos_pretrain_path=pretrain_path,
+                depparse_pretrain_path=pretrain_path,
                 pos_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt'),
                 lemma_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt'),
                 depparse_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')
@@ -84,11 +84,11 @@ class ABSAGraphBuilder:
             print("✅ Stanza加载成功!")
         except Exception as e:
             print(f"❌ Stanza加载失败: {e}")
-            print("\n请检查模型文件是否下载完整:")
-            print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt')}")
-            print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt')}")
-            print(f"  {os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')}")
-            print("\n如果仍然报错，请提供完整错误信息")
+            print("\n请检查以下文件是否存在:")
+            print(f"  Pretrain: {os.path.join(self.stanza_dir, 'en', 'pretrain', 'glove.pt')}")
+            print(f"  POS: {os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt')}")
+            print(f"  Lemma: {os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt')}")
+            print(f"  Depparse: {os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')}")
             raise
         
         # 初始化BERT
