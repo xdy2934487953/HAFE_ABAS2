@@ -110,17 +110,21 @@ class HAFE_ABSA_Model(nn.Module):
                         '_row': edge_index[0],
                         '_col': edge_index[1]
                     })()
-                
+
                 def __getitem__(self, idx):
                     return self._edge_index[idx]
-                
+
                 @property
                 def shape(self):
                     return self._edge_index.shape
-                
+
                 def cpu(self):
                     return EdgeIndexWrapper(self._edge_index.cpu())
-            
+
+                def to(self, device):
+                    """添加to()方法支持设备转换"""
+                    return EdgeIndexWrapper(self._edge_index.to(device))
+
             wrapped_edge_index = EdgeIndexWrapper(combined_edge_index)
         else:
             wrapped_edge_index = torch.zeros((2, 0), dtype=torch.long, device=self.device)
