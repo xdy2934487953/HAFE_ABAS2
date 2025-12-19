@@ -1,7 +1,14 @@
 import torch
-import stanza
 import numpy as np
 from transformers import BertTokenizer, BertModel
+
+# 使用 SpaCy 替代 Stanza（更稳定，避免Windows权限问题）
+USE_SPACY = True  # 设为 False 可切换回 Stanza
+
+if USE_SPACY:
+    import spacy
+else:
+    import stanza
 
 # ===== 新增：边类型定义 =====
 class EdgeType:
@@ -43,53 +50,52 @@ class ABSAGraphBuilder:
     def __init__(self, device='cuda'):
         self.device = device
 
-        # 设置Stanza资源目录到项目本地目录（解决Windows权限问题）
-        import os
-        # 获取项目根目录（src的父目录）
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.stanza_dir = os.path.join(project_root, 'stanza_resources')
-
         # 初始化依存解析器
-        print("初始化Stanza依存解析器...")
-        print(f"Stanza资源目录: {self.stanza_dir}")
+        if USE_SPACY:
+            print("初始化SpaCy依存解析器...")
+            try:
+                self.nlp = spacy.load('en_core_web_sm')
+                print("✅ SpaCy加载成功!")
+            except OSError:
+                print("\n" + "="*60)
+                print("❌ 错误: SpaCy模型未安装!")
+                print("="*60)
+                print("请运行以下命令安装:")
+                print("  pip install spacy")
+                print("  python -m spacy download en_core_web_sm")
+                print("="*60 + "\n")
+                raise
+        else:
+            # Stanza 版本（可能有权限问题）
+            import os
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.stanza_dir = os.path.join(project_root, 'stanza_resources')
 
-        # 检查模型是否存在
-        if not os.path.exists(os.path.join(self.stanza_dir, 'en')):
-            print("\n" + "="*60)
-            print("❌ 错误: 未找到Stanza模型!")
-            print("="*60)
-            print("请先运行下载脚本:")
-            print("  python download_stanza_local.py")
-            print("="*60 + "\n")
-            raise FileNotFoundError("Stanza模型未下载，请先运行 download_stanza_local.py")
+            print("初始化Stanza依存解析器...")
+            print(f"Stanza资源目录: {self.stanza_dir}")
 
-        try:
-            # 指定pretrain路径（使用glove词向量）
-            pretrain_path = os.path.join(self.stanza_dir, 'en', 'pretrain', 'glove.pt')
+            if not os.path.exists(os.path.join(self.stanza_dir, 'en')):
+                raise FileNotFoundError("Stanza模型未下载")
 
-            self.nlp = stanza.Pipeline(
-                'en',
-                processors='tokenize,pos,lemma,depparse',
-                use_gpu=(device=='cuda'),
-                verbose=False,
-                dir=self.stanza_dir,
-                download_method=None,  # 禁止自动下载
-                # 指定pretrain路径和模型路径
-                pos_pretrain_path=pretrain_path,
-                depparse_pretrain_path=pretrain_path,
-                pos_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt'),
-                lemma_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt'),
-                depparse_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')
-            )
-            print("✅ Stanza加载成功!")
-        except Exception as e:
-            print(f"❌ Stanza加载失败: {e}")
-            print("\n请检查以下文件是否存在:")
-            print(f"  Pretrain: {os.path.join(self.stanza_dir, 'en', 'pretrain', 'glove.pt')}")
-            print(f"  POS: {os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt')}")
-            print(f"  Lemma: {os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt')}")
-            print(f"  Depparse: {os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')}")
-            raise
+            try:
+                pretrain_path = os.path.join(self.stanza_dir, 'en', 'pretrain', 'glove.pt')
+                self.nlp = stanza.Pipeline(
+                    'en',
+                    processors='tokenize,pos,lemma,depparse',
+                    use_gpu=(device=='cuda'),
+                    verbose=False,
+                    dir=self.stanza_dir,
+                    download_method=None,
+                    pos_pretrain_path=pretrain_path,
+                    depparse_pretrain_path=pretrain_path,
+                    pos_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'pos', 'ewt_nocharlm.pt'),
+                    lemma_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'lemma', 'ewt_nocharlm.pt'),
+                    depparse_model_path=os.path.join(self.stanza_dir, 'en', 'default', 'depparse', 'ewt_nocharlm.pt')
+                )
+                print("✅ Stanza加载成功!")
+            except Exception as e:
+                print(f"❌ Stanza加载失败: {e}")
+                raise
         
         # 初始化BERT
         print("初始化BERT...")
@@ -100,7 +106,7 @@ class ABSAGraphBuilder:
     def build_graph(self, text, aspects):
         """
         构建单个句子的ABSA图（带边类型）
-        
+
         Returns:
             graph: dict包含
                 - features: [num_nodes, 768] BERT特征
@@ -111,27 +117,41 @@ class ABSAGraphBuilder:
         """
         # 1. 依存解析
         doc = self.nlp(text)
-        words = [word.text for sent in doc.sentences for word in sent.words]
-        
-        if len(words) == 0:
-            raise ValueError("句子解析后没有词")
-        
-        # 2. 构建依存边（同时记录依存关系）
-        edges = []
-        dep_rels = []  # 记录每条边的依存关系
-        
-        for sent in doc.sentences:
-            for word in sent.words:
-                if word.head > 0:  # 不是根节点
-                    head_idx = word.head - 1
-                    word_idx = word.id - 1
-                    if head_idx < len(words) and word_idx < len(words):
-                        edges.append([word_idx, head_idx])
-                        edges.append([head_idx, word_idx])  # 双向边
-                        
-                        # 记录依存关系
-                        dep_rels.append(word.deprel)
-                        dep_rels.append(word.deprel)  # 双向都记录
+
+        if USE_SPACY:
+            # SpaCy解析
+            words = [token.text for token in doc]
+            if len(words) == 0:
+                raise ValueError("句子解析后没有词")
+
+            # 构建依存边
+            edges = []
+            dep_rels = []
+            for token in doc:
+                if token.dep_ != 'ROOT' and token.head.i != token.i:
+                    edges.append([token.i, token.head.i])
+                    edges.append([token.head.i, token.i])  # 双向边
+                    dep_rels.append(token.dep_)
+                    dep_rels.append(token.dep_)
+        else:
+            # Stanza解析
+            words = [word.text for sent in doc.sentences for word in sent.words]
+            if len(words) == 0:
+                raise ValueError("句子解析后没有词")
+
+            # 构建依存边
+            edges = []
+            dep_rels = []
+            for sent in doc.sentences:
+                for word in sent.words:
+                    if word.head > 0:  # 不是根节点
+                        head_idx = word.head - 1
+                        word_idx = word.id - 1
+                        if head_idx < len(words) and word_idx < len(words):
+                            edges.append([word_idx, head_idx])
+                            edges.append([head_idx, word_idx])
+                            dep_rels.append(word.deprel)
+                            dep_rels.append(word.deprel)
         
         # 3. BERT特征提取
         features = self._extract_bert_features(text, words)
