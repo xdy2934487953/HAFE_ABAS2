@@ -43,35 +43,15 @@ class ABSAGraphBuilder:
     def __init__(self, device='cuda'):
         self.device = device
 
-<<<<<<< HEAD
-        # 设置Stanza资源目录到当前用户目录（解决Windows权限问题）
-        import os
-        self.stanza_dir = os.path.join(os.path.expanduser('~'), 'stanza_resources')
-        os.makedirs(self.stanza_dir, exist_ok=True)
-=======
         # 设置Stanza资源目录到项目本地目录（解决Windows权限问题）
         import os
         # 获取项目根目录（src的父目录）
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.stanza_dir = os.path.join(project_root, 'stanza_resources')
->>>>>>> 4d673cccf6ad04aed9dc4cb64c5f7ec4e1d625fa
 
         # 初始化依存解析器
         print("初始化Stanza依存解析器...")
         print(f"Stanza资源目录: {self.stanza_dir}")
-<<<<<<< HEAD
-        try:
-            self.nlp = stanza.Pipeline('en', processors='tokenize,pos,lemma,depparse',
-                                      use_gpu=(device=='cuda'), verbose=False,
-                                      dir=self.stanza_dir)
-        except:
-            print("下载Stanza英文模型...")
-            stanza.download('en', model_dir=self.stanza_dir, verbose=True)
-            print("模型下载完成！")
-            self.nlp = stanza.Pipeline('en', processors='tokenize,pos,lemma,depparse',
-                                      use_gpu=(device=='cuda'), verbose=False,
-                                      dir=self.stanza_dir)
-=======
 
         # 检查模型是否存在
         if not os.path.exists(os.path.join(self.stanza_dir, 'en')):
@@ -98,7 +78,6 @@ class ABSAGraphBuilder:
             print("\n请尝试重新下载模型:")
             print("  python download_stanza_local.py")
             raise
->>>>>>> 4d673cccf6ad04aed9dc4cb64c5f7ec4e1d625fa
         
         # 初始化BERT
         print("初始化BERT...")
