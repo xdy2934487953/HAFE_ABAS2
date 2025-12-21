@@ -100,15 +100,15 @@ def compare_experiments(exp_dirs, output_file=None):
         avg_f1 = summary.get('avg_macro_f1', 0)
 
         print(f"最佳实验: {best_exp}")
-        print(".4f")
-        print(".4f")
+        print(f"最佳Macro-F1: {best_f1:.4f}")
+        print(f"平均Macro-F1: {avg_f1:.4f}")
 
     # 详细对比
     experiments = comparison.get('experiments', {})
     if experiments:
         print(f"\n详细结果:")
         print("-" * 60)
-        print("<35")
+        print(f"{'Experiment':<35} {'Macro-F1':<10} {'Accuracy':<10}")
         print("-" * 60)
 
         for exp_name, exp_data in experiments.items():
@@ -116,11 +116,10 @@ def compare_experiments(exp_dirs, output_file=None):
             best_metrics = exp_data.get('best_metrics', {})
 
             model = config.get('model', 'N/A')
-            lr = config.get('lr', 'N/A')
             macro_f1 = best_metrics.get('macro_f1', 0)
             accuracy = best_metrics.get('accuracy', 0)
 
-            print("<35")
+            print(f"{exp_name:<35} {macro_f1:.4f}    {accuracy:.4f}")
 
     if output_file:
         print(f"\n对比报告已保存到: {output_file}")
@@ -203,17 +202,15 @@ def create_summary_table(exp_dirs, output_file=None):
                 'Learning_Rate': config.get('lr', 'N/A'),
                 'Hidden_Dim': config.get('hidden_dim', 'N/A'),
                 'Best_Epoch': best_result.get('epoch', 'N/A'),
-                'Best_Macro_F1': ".4f",
-                'Best_Accuracy': ".4f",
-                'Final_Macro_F1': ".4f",
-                'Final_Accuracy': ".4f",
-                'Gini': ".4f",
-                'DP_Aspect': ".4f"
+                'Best_Macro_F1': f"{best_result.get('macro_f1', 0):.4f}",
+                'Best_Accuracy': f"{best_result.get('accuracy', 0):.4f}",
+                'Final_Macro_F1': f"{eval_history[-1].get('macro_f1', 0):.4f}",
+                'Final_Accuracy': f"{eval_history[-1].get('accuracy', 0):.4f}"
             }
 
             if 'gini' in best_result:
-                row['Gini'] = ".4f"
-                row['DP_Aspect'] = ".4f"
+                row['Gini'] = f"{best_result.get('gini', 0):.4f}"
+                row['DP_Aspect'] = f"{best_result.get('dp_aspect', 0):.4f}"
 
             summary_data.append(row)
 

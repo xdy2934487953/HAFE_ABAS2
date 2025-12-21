@@ -25,7 +25,7 @@ def test_imports():
 
         return True
     except ImportError as e:
-        print(f"✗ Import error: {e}")
+        print(f"[FAIL] Import error: {e}")
         return False
 
 def test_dib_module():
@@ -54,7 +54,7 @@ def test_graph_builder():
 
 def test_config():
     """测试训练配置"""
-    print("\nTesting training configuration...")
+    print("\nTesting training config...")
     try:
         import train_simplified
         print("[OK] Training script imports correctly")
@@ -66,7 +66,7 @@ def test_config():
 def main():
     """主测试函数"""
     print("=" * 50)
-    print("简化版Causal-HAFE快速测试")
+    print("Simplified Causal-HAFE Quick Test")
     print("=" * 50)
 
     tests = [

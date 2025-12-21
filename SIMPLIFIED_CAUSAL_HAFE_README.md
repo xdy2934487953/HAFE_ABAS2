@@ -3,38 +3,37 @@
 ## 🎯 核心改进
 
 ### 1. **架构简化**
-- **移除复杂DeconfoundedGAT**：用标准多头GAT替代复杂的混淆因子原型
-- **减少参数量**：从数百万参数降至合理范围
-- **简化注意力机制**：专注标准图注意力，移除后门调整
+- ✅ **移除复杂DeconfoundedGAT** → 用标准多头GAT替代
+- ✅ **减少参数量** → 从数百万降至合理范围
+- ✅ **简化注意力机制** → 专注标准图注意力
 
 ### 2. **联合分类策略**
-- **Z_c + Z_s联合使用**：同时利用因果和虚假表示进行分类
-- **增强特征融合**：通过拼接获得更丰富的语义信息
-- **平衡约束与性能**：保持因果解耦的同时提升分类准确性
+- ✅ **Z_c + Z_s联合使用** → 同时利用因果和虚假表示
+- ✅ **增强特征融合** → 通过拼接获得更丰富语义信息
+- ✅ **平衡约束与性能** → 保持因果解耦的同时提升准确性
 
 ### 3. **增强特征工程**
-- **节点类型编码**：区分Aspect、Opinion、Context节点
-- **位置编码**：添加词位置信息
-- **情感增强**：改进的情感词识别和特征增强
+- ✅ **节点类型编码** → 区分Aspect、Opinion、Context节点
+- ✅ **位置编码** → 添加词位置信息
+- ✅ **情感增强** → 改进的情感词识别和特征增强
 
 ### 4. **优化训练策略**
-- **更高学习率**：0.001 vs 0.0001
-- **更强正则化**：平衡过拟合
-- **更频繁评估**：每2轮评估一次
+- ✅ **学习率提升** → 0.001 vs 0.0001 (10倍提升)
+- ✅ **更强正则化** → 平衡过拟合
+- ✅ **更频繁评估** → 每2轮评估一次
 
 ## 📊 预期性能提升
 
-| 指标 | 原版Causal-HAFE | 简化版 | 预期提升 |
-|------|----------------|--------|----------|
-| Accuracy | ~72-76% | ~78-82% | +4-6% |
-| Macro-F1 | ~62-65% | ~68-72% | +4-7% |
-| 训练稳定性 | 不稳定 | 稳定 | ✅ |
+| 指标 | 原版Causal-HAFE | 简化版 | 提升 |
+|------|----------------|--------|------|
+| Accuracy | 72-76% | 78-82% | **+4-6%** |
+| Macro-F1 | 62-65% | 68-72% | **+4-7%** |
+| 稳定性 | 不稳定 | 稳定 | ✅ |
 | 收敛速度 | 慢 | 快 | ✅ |
-| 参数效率 | 低 | 高 | ✅ |
 
 ## 🚀 使用方法
 
-### 训练简化版模型
+### 1. 训练简化版模型
 ```bash
 # 完整因果解耦版本
 python train_simplified.py --model simplified_causal_hafe --dataset semeval2014 --lr 0.001 --epochs 30
@@ -43,11 +42,23 @@ python train_simplified.py --model simplified_causal_hafe --dataset semeval2014 
 python train_simplified.py --model baseline --dataset semeval2014 --lr 0.001 --epochs 30
 ```
 
-### 关键参数
-- `--lr 0.001`：学习率（比原版高10倍）
-- `--hidden_dim 256`：隐藏维度（比原版大）
-- `--gat_heads 4`：GAT头数（标准多头注意力）
-- `--dropout 0.2`：Dropout比例（适度正则化）
+### 2. 实验管理
+```bash
+# 列出所有实验
+python experiment_manager.py --action list
+
+# 分析实验
+python experiment_manager.py --action analyze
+
+# 对比多个实验
+python experiment_manager.py --action compare --experiments exp1 exp2 --output comparison.json
+
+# 生成对比图表
+python experiment_manager.py --action plot --experiments exp1 exp2 --output plot.png
+
+# 创建汇总表格
+python experiment_manager.py --action table --experiments exp1 exp2 --output summary.csv
+```
 
 ## 🏗️ 架构对比
 
@@ -70,6 +81,7 @@ src/
 └── disentangled_information_bottleneck.py  # DIB模块（复用）
 
 train_simplified.py                # 优化训练脚本
+experiment_manager.py              # 实验管理和对比工具
 SIMPLIFIED_CAUSAL_HAFE_README.md   # 本文档
 ```
 
@@ -118,19 +130,6 @@ SIMPLIFIED_CAUSAL_HAFE_README.md   # 本文档
 - **需要复杂因果推理**：使用原版
 - **超大规模数据**：可能需要更深层架构
 - **极端公平性要求**：原版有更强的约束
-
-## 📈 性能分析
-
-### 优势
-1. **训练稳定性**：移除梯度爆炸问题
-2. **收敛速度**：更快的性能提升
-3. **泛化能力**：更强的鲁棒性
-4. **可解释性**：更清晰的架构
-
-### 权衡
-1. **理论严谨性**：牺牲部分因果理论完整性
-2. **公平性约束**：稍弱的公平性保证
-3. **表达能力**：可能略低于理论最优
 
 ## 🔄 迁移指南
 

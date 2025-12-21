@@ -169,8 +169,8 @@ class ExperimentLogger:
         self.save_config()
 
         # 初始化日志文件
-        self.train_log_path = os.path.join(self.experiment_dir, "train_log.csv")
-        self.eval_log_path = os.path.join(self.experiment_dir, "eval_log.csv")
+        self.train_log_path = os.path.join(self.experiment_dir, "logs", "train_log.csv")
+        self.eval_log_path = os.path.join(self.experiment_dir, "logs", "eval_log.csv")
         self._init_log_files()
 
         # 训练历史
@@ -451,20 +451,20 @@ class ABSAResultsManager:
         self.results_dir = results_dir
         self.experiments = {}
 
-    def load_experiment(self, experiment_dir):
+    def load_experiment(self, exp_dir):
         """加载实验结果"""
-        exp_name = os.path.basename(experiment_dir)
+        exp_name = os.path.basename(exp_dir)
 
         # 加载配置
-        config_path = os.path.join(experiment_dir, "configs", "experiment_config.json")
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
+        config_file = os.path.join(exp_dir, "configs", "experiment_config.json")
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
                 config = json.load(f)
         else:
             config = {}
 
         # 加载评估历史
-        eval_log_path = os.path.join(experiment_dir, "logs", "eval_log.csv")
+        eval_log_path = os.path.join(exp_dir, "logs", "eval_log.csv")
         eval_history = []
         if os.path.exists(eval_log_path):
             with open(eval_log_path, 'r') as f:
@@ -475,7 +475,7 @@ class ABSAResultsManager:
         self.experiments[exp_name] = {
             'config': config,
             'eval_history': eval_history,
-            'experiment_dir': experiment_dir
+            'experiment_dir': exp_dir
         }
 
         return exp_name

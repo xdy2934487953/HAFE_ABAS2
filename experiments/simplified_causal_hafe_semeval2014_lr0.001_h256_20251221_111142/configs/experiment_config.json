@@ -1,0 +1,17 @@
+{
+    "dataset": "semeval2014",
+    "model": "simplified_causal_hafe",
+    "hidden_dim": 256,
+    "causal_dim": 128,
+    "spurious_dim": 64,
+    "gat_heads": 4,
+    "dropout": 0.2,
+    "lambda_indep": 0.1,
+    "lambda_bias": 0.5,
+    "lambda_ib": 0.01,
+    "num_frequency_buckets": 5,
+    "lr": 0.001,
+    "weight_decay": 5e-05,
+    "epochs": 30,
+    "eval_every": 2
+}

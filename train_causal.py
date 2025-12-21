@@ -18,8 +18,6 @@ from data_loader import ABSADataset, download_datasets
 from graph_builder import ABSAGraphBuilder
 from causal_hafe import CausalHAFE_Model, CausalHAFE_Baseline
 from evaluator import ABSAEvaluator
-from utils import ExperimentLogger, create_experiment_logger
-import time
 
 
 def train_epoch_causal(model, graphs, frequency_buckets, dataset, optimizer, device):
@@ -162,16 +160,6 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"使用设备: {device}")
 
-    # 创建实验日志记录器
-    experiment_name = f"causal_hafe_{args.dataset}_lr{args.lr}_h{args.hidden_dim}"
-    logger = create_experiment_logger(
-        experiment_name,
-        config=vars(args)
-    )
-    print(f"实验日志目录: {logger.experiment_dir}")
-
-    start_time = time.time()
-
     # 1. 检查数据集
     if args.dataset == 'semeval2014':
         data_path = './data/semeval2014/'
@@ -300,10 +288,7 @@ def main(args):
 
     # 6. 训练循环
     print("\n=== 开始训练 ===")
-    epoch_start_time = time.time()
-
     for epoch in range(args.epochs):
-        # 训练一个epoch
         if args.model == 'causal_hafe':
             train_loss, loss_breakdown = train_epoch_causal(
                 model, train_graphs, frequency_buckets, train_dataset, optimizer, device
@@ -315,26 +300,12 @@ def main(args):
             train_loss = train_epoch(model, train_graphs, optimizer, criterion, device)
             loss_breakdown = None
 
-        # 记录训练日志
-        epoch_time = time.time() - epoch_start_time
-        current_lr = optimizer.param_groups[0]['lr']
-
-        logger.log_train_step(
-            epoch=epoch,
-            loss_dict=loss_breakdown or {'total': train_loss},
-            lr=current_lr,
-            time_elapsed=epoch_time
-        )
-
         if (epoch + 1) % args.eval_every == 0:
             # 评估 (训练时不使用TIE)
             test_metrics = evaluate_causal(
                 model, test_graphs, evaluator, train_dataset.aspect_freq, device,
                 use_tie=False
             )
-
-            # 记录评估日志
-            logger.log_eval_step(epoch, test_metrics)
 
             print(f"\nEpoch {epoch+1}/{args.epochs}")
             print(f"  Train Loss: {train_loss:.4f}")
@@ -349,28 +320,17 @@ def main(args):
                 print(f"  Gini: {test_metrics['gini']:.4f}")
                 print(f"  DP-Aspect: {test_metrics['dp_aspect']:.4f}")
 
-            # 检查是否为最佳模型
-            is_best = test_metrics['macro_f1'] > best_macro_f1
-            if is_best:
+            if test_metrics['macro_f1'] > best_macro_f1:
                 best_macro_f1 = test_metrics['macro_f1']
                 best_metrics = test_metrics
 
-            # 保存模型checkpoint
-            logger.save_model(
-                model=model,
-                optimizer=optimizer,
-                scheduler=scheduler,
-                epoch=epoch,
-                is_best=is_best
-            )
-
-            if is_best:
-                print(f"  💾 保存最佳模型 (F1: {best_macro_f1:.4f})")
+                # 保存模型
+                os.makedirs('./checkpoints', exist_ok=True)
+                save_name = f"{args.dataset}_{args.model}"
+                torch.save(model.state_dict(), f'./checkpoints/{save_name}_best.pt')
 
             # 更新学习率
             scheduler.step(test_metrics['macro_f1'])
-
-        epoch_start_time = time.time()
 
     # 7. 最终评估 (使用TIE)
     if args.model == 'causal_hafe' and args.use_tie_inference:
@@ -397,20 +357,7 @@ def main(args):
                 best_metrics = tie_metrics
                 print(f"  *** TIE提升了性能! ***")
 
-    # 8. 生成训练报告和可视化
-    total_time = time.time() - start_time
-    print(f"\n训练总用时: {total_time:.2f}秒 ({total_time/3600:.2f}小时)")
-
-    # 生成训练曲线图
-    logger.plot_training_curves()
-
-    # 生成实验报告
-    report = logger.generate_report()
-
-    # 打印详细的实验总结
-    logger.print_summary()
-
-    # 9. 最终结果
+    # 8. 最终结果
     if best_metrics is None:
         print("训练失败，没有有效的评估结果")
         return
@@ -431,7 +378,7 @@ def main(args):
         print(f"  High-Freq F1: {best_metrics['high_freq_f1']:.4f}")
         print(f"  Low-Freq F1: {best_metrics['low_freq_f1']:.4f}")
 
-    # 10. Per-aspect详细结果
+    # 9. Per-aspect详细结果
     if len(best_metrics['per_aspect_f1']) > 0:
         print(f"\nPer-Aspect F1 (Top 10):")
         sorted_aspects = sorted(best_metrics['per_aspect_f1'].items(),
@@ -442,8 +389,6 @@ def main(args):
             print(f"  {aspect:35s} (freq={freq:4d}): F1={f1:.4f}")
 
     print("="*60)
-    print(f"\n实验结果已保存到: {logger.experiment_dir}")
-    print("包含: 训练日志、模型checkpoint、可视化图表、详细报告")
 
 
 if __name__ == '__main__':
