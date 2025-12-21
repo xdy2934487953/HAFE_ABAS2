@@ -1,6 +1,6 @@
 # ===== 核心机器学习框架 =====
-torch==2.0.1
-torch-geometric==2.3.1
+# torch==2.0.1
+# torch-geometric==2.3.1
 
 # ===== NLP处理 =====
 transformers==4.30.0
