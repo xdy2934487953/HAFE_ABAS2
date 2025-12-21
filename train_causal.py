@@ -278,7 +278,7 @@ def main(args):
 
     # 添加学习率调度器（防止训练不稳定）
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='max', factor=0.5, patience=5, verbose=True
+        optimizer, mode='max', factor=0.5, patience=5
     )
 
     evaluator = ABSAEvaluator()
