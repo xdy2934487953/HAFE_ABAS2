@@ -10,13 +10,19 @@ if USE_SPACY:
 else:
     import stanza
 
-# ===== 新增：边类型定义 =====
+# ===== 新增：边类型和节点类型定义 =====
 class EdgeType:
     """边类型枚举"""
     OPINION = 0      # Aspect-Opinion边（最重要）
     SYNTAX_CORE = 1  # 核心句法边（nsubj, dobj, amod等）
     COREF = 2        # Aspect协同边
     OTHER = 3        # 其他边（连接词、冠词等）
+
+class NodeType:
+    """节点类型枚举"""
+    ASPECT = 0       # Aspect节点
+    OPINION = 1      # 情感词节点
+    CONTEXT = 2      # 上下文节点
 
 # 核心句法关系列表
 CORE_DEP_RELS = {
@@ -220,6 +226,14 @@ class ABSAGraphBuilder:
             coref_edge_start
         )
         
+        # ===== 新增：7. 识别节点类型 =====
+        node_types = self._identify_node_types(
+            words, aspect_indices, doc
+        )
+
+        # ===== 新增：8. 计算位置编码 =====
+        positions = torch.arange(len(words), dtype=torch.float)
+
         # 转换为tensor
         if len(edges) > 0:
             edge_index = torch.LongTensor(edges).t()
@@ -227,14 +241,16 @@ class ABSAGraphBuilder:
         else:
             edge_index = torch.zeros((2, 0), dtype=torch.long)
             edge_types = torch.zeros(0, dtype=torch.long)
-        
+
         assert len(aspect_indices) == len(labels), \
             f"Aspect数量不匹配: {len(aspect_indices)} vs {len(labels)}"
-        
+
         return {
             'features': features,
             'edge_index': edge_index,
             'edge_types': edge_types,  # 新增！
+            'node_types': torch.LongTensor(node_types),  # 新增！
+            'positions': positions,  # 新增！
             'aspect_indices': torch.LongTensor(aspect_indices),
             'labels': torch.LongTensor(labels),
             'text': text,
@@ -280,7 +296,55 @@ class ABSAGraphBuilder:
             edge_types.append(EdgeType.OTHER)
         
         return edge_types
-    
+
+    def _identify_node_types(self, words, aspect_indices, doc):
+        """
+        识别每个节点的类型
+
+        Args:
+            words: 词列表
+            aspect_indices: aspect节点索引列表
+            doc: SpaCy/Stanza文档对象
+
+        Returns:
+            node_types: [num_nodes] 节点类型列表
+        """
+        node_types = []
+
+        for i, word in enumerate(words):
+            if i in aspect_indices:
+                # Aspect节点
+                node_types.append(NodeType.ASPECT)
+            elif self._is_opinion_word(word, doc):
+                # 情感词节点
+                node_types.append(NodeType.OPINION)
+            else:
+                # 上下文节点
+                node_types.append(NodeType.CONTEXT)
+
+        return node_types
+
+    def _is_opinion_word(self, word, doc):
+        """
+        判断词是否为情感词
+        增强版：基于词典 + 上下文分析
+        """
+        word_lower = word.lower()
+
+        # 1. 词典匹配
+        if word_lower in SENTIMENT_WORDS:
+            return True
+
+        # 2. 形态学变体 (简单版本)
+        for sentiment_word in SENTIMENT_WORDS:
+            if sentiment_word in word_lower or word_lower in sentiment_word:
+                return True
+
+        # 3. 上下文情感分析 (可选)
+        # 这里可以添加更复杂的上下文分析
+
+        return False
+
     def _is_aspect_opinion_edge(self, src, tgt, words, aspect_indices):
         """
         判断一条边是否是Aspect-Opinion边
