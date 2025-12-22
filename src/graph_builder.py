@@ -1,6 +1,16 @@
 import torch
 import numpy as np
-from transformers import BertTokenizer, BertModel
+import warnings
+from transformers import BertTokenizer, BertModel, logging as hf_logging
+
+# Suppress huggingface_hub resume_download deprecation warning.
+warnings.filterwarnings(
+    "ignore",
+    message="`resume_download` is deprecated*",
+    category=FutureWarning,
+)
+# Suppress transformers warnings about unused checkpoint weights.
+hf_logging.set_verbosity_error()
 
 # 使用 SpaCy 替代 Stanza（更稳定，避免Windows权限问题）
 USE_SPACY = True  # 设为 False 可切换回 Stanza
